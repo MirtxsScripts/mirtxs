@@ -1,0 +1,130 @@
+--// Advanced Key System + ESP + Teleport GUI
+
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- Remote Key List (you can host it on Pastebin / your own site)
+local KeyListURL = "https://pastebin.com/raw/YOUR_KEY_LIST_PASTE_ID"
+
+local function ValidateKey(userKey)
+    local validKeys = game:HttpGet(KeyListURL)
+    for key in string.gmatch(validKeys, "[^\r\n]+") do
+        if userKey == key then
+            return true
+        end
+    end
+    return false
+end
+
+-- Key Input
+local userKey = ""
+rconsoleprint("🔑 Enter your key: ")
+userKey = rconsoleinput()
+
+if not ValidateKey(userKey) then
+    rconsoleprint("❌ Invalid key. Closing script.\n")
+    return
+end
+
+rconsoleprint("✅ Key accepted! Loading features...\n")
+
+--// Create GUI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Parent = game.CoreGui
+ScreenGui.ResetOnSpawn = false
+
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0, 200, 0, 150)
+Frame.Position = UDim2.new(0, 20, 0, 20)
+Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Frame.Parent = ScreenGui
+
+local ESPButton = Instance.new("TextButton")
+ESPButton.Size = UDim2.new(0, 180, 0, 40)
+ESPButton.Position = UDim2.new(0, 10, 0, 10)
+ESPButton.Text = "Toggle ESP"
+ESPButton.Parent = Frame
+
+local TPButton = Instance.new("TextButton")
+TPButton.Size = UDim2.new(0, 180, 0, 40)
+TPButton.Position = UDim2.new(0, 10, 0, 60)
+TPButton.Text = "Teleport To Player"
+TPButton.Parent = Frame
+
+local CloseButton = Instance.new("TextButton")
+CloseButton.Size = UDim2.new(0, 180, 0, 30)
+CloseButton.Position = UDim2.new(0, 10, 0, 110)
+CloseButton.Text = "Close UI"
+CloseButton.Parent = Frame
+
+--// ESP Logic
+local ESP_ENABLED = false
+
+local function CreateESP(player)
+    if player == LocalPlayer then return end
+    local char = player.Character or player.CharacterAdded:Wait()
+    if char:FindFirstChild("ESP_Highlight") then return end
+
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "ESP_Highlight"
+    highlight.Adornee = char
+    highlight.FillColor = Color3.fromRGB(0, 255, 0)
+    highlight.FillTransparency = 0.5
+    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+    highlight.Parent = char
+end
+
+local function RemoveESP(player)
+    if player.Character then
+        local esp = player.Character:FindFirstChild("ESP_Highlight")
+        if esp then
+            esp:Destroy()
+        end
+    end
+end
+
+ESPButton.MouseButton1Click:Connect(function()
+    ESP_ENABLED = not ESP_ENABLED
+    ESPButton.Text = ESP_ENABLED and "ESP: ON" or "ESP: OFF"
+    for _, player in ipairs(Players:GetPlayers()) do
+        if ESP_ENABLED then
+            CreateESP(player)
+        else
+            RemoveESP(player)
+        end
+    end
+end)
+
+Players.PlayerAdded:Connect(function(player)
+    if ESP_ENABLED then
+        player.CharacterAdded:Connect(function()
+            wait(1)
+            CreateESP(player)
+        end)
+    end
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    RemoveESP(player)
+end)
+
+--// Teleport Logic
+TPButton.MouseButton1Click:Connect(function()
+    rconsoleprint("Type a player name to teleport to: ")
+    local targetName = rconsoleinput()
+
+    local target = Players:FindFirstChild(targetName)
+    if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+        LocalPlayer.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame + Vector3.new(0,3,0)
+        rconsoleprint("✅ Teleported to " .. targetName .. "\n")
+    else
+        rconsoleprint("⚠️ Player not found or not loaded!\n")
+    end
+end)
+
+CloseButton.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
+end)
+
+rconsoleprint("🎉 Script loaded! Use the UI or console to control.\n")
